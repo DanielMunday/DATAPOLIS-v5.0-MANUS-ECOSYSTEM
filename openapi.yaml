@@ -1,0 +1,1498 @@
+openapi: "3.0.3"
+info:
+  title: DATAPOLIS v3.0 API
+  description: |
+    API REST para plataforma PropTech/FinTech/RegTech/GovTech chilena.
+    
+    ## Dominios
+    - **PropTech**: Gestión inmobiliaria, copropiedades, antenas (M00-M02, M05-M06, MS)
+    - **FinTech**: Open Finance NCG514, Credit Scoring, Valorización (M01-OF, M03-M04, M07-M08)
+    - **RegTech**: Compliance, Certificados tributarios, Basel IV (M10-M11, M14-M16)
+    - **GovTech**: GIRES, ÁGORA, Plusvalías Urbanas (M17, M22, GT-PV)
+    
+    ## Autenticación
+    - JWT Bearer Token (endpoints estándar)
+    - OAuth2 FAPI 2.0 + mTLS (Open Finance NCG514)
+  version: "3.0.0"
+  contact:
+    name: DATAPOLIS SpA
+    email: api@datapolis.cl
+    url: https://datapolis.cl
+  license:
+    name: Proprietary
+    url: https://datapolis.cl/license
+
+servers:
+  - url: https://api.datapolis.cl/api/v1
+    description: Producción
+  - url: https://staging-api.datapolis.cl/api/v1
+    description: Staging
+  - url: http://localhost:8000/api/v1
+    description: Desarrollo Local (FastAPI)
+  - url: http://localhost:8080/api/v1
+    description: Desarrollo Local (Laravel)
+
+tags:
+  - name: Auth
+    description: Autenticación y gestión de usuarios
+  - name: M00-Expedientes
+    description: Gestión de expedientes inmobiliarios
+  - name: M01-Fichas
+    description: Fichas de propiedad
+  - name: M02-Copropiedades
+    description: Gestión de copropiedades Ley 21.442
+  - name: M03-CreditScoring
+    description: Credit Scoring Basel IV (PD, LGD, EAD)
+  - name: M04-Valorizacion
+    description: Valorización inmobiliaria ML
+  - name: M05-Arriendos
+    description: Gestión de arriendos y SCF
+  - name: M06-Mantenciones
+    description: Mantenciones y contratos
+  - name: M07-Inversiones
+    description: Análisis de inversión
+  - name: M08-Contabilidad
+    description: Contabilidad y reportería IFRS
+  - name: M01-OF-OpenFinance
+    description: Open Finance NCG514 / FAPI 2.0
+  - name: M11-PAE
+    description: Precession Analysis Engine
+  - name: M17-GIRES
+    description: Gestión de Riesgos Naturales
+  - name: M22-AGORA
+    description: ÁGORA GeoViewer - Inteligencia Territorial
+  - name: GT-PV-Plusvalias
+    description: Plusvalías Urbanas Ley 21.713
+  - name: IE-Indicadores
+    description: Indicadores Económicos (UF, UTM, IPC)
+  - name: Health
+    description: Health checks y métricas
+
+security:
+  - bearerAuth: []
+
+paths:
+  # ===========================================================================
+  # HEALTH
+  # ===========================================================================
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check del sistema
+      security: []
+      responses:
+        "200":
+          description: Sistema saludable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /health/database:
+    get:
+      tags: [Health]
+      summary: Verificar conexión a base de datos
+      security: []
+      responses:
+        "200":
+          description: Base de datos conectada
+
+  # ===========================================================================
+  # AUTH
+  # ===========================================================================
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Iniciar sesión
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Login exitoso
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Cerrar sesión
+      responses:
+        "204":
+          description: Sesión cerrada
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Obtener usuario actual
+      responses:
+        "200":
+          description: Datos del usuario
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  # ===========================================================================
+  # M00 - EXPEDIENTES
+  # ===========================================================================
+  /expedientes:
+    get:
+      tags: [M00-Expedientes]
+      summary: Listar expedientes
+      parameters:
+        - $ref: "#/components/parameters/page"
+        - $ref: "#/components/parameters/per_page"
+        - name: estado
+          in: query
+          schema:
+            type: string
+            enum: [activo, cerrado, pendiente]
+      responses:
+        "200":
+          description: Lista paginada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExpedienteList"
+    post:
+      tags: [M00-Expedientes]
+      summary: Crear expediente
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpedienteCreate"
+      responses:
+        "201":
+          description: Expediente creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expediente"
+
+  /expedientes/{id}:
+    get:
+      tags: [M00-Expedientes]
+      summary: Obtener expediente
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Detalle del expediente
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Expediente"
+    put:
+      tags: [M00-Expedientes]
+      summary: Actualizar expediente
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExpedienteUpdate"
+      responses:
+        "200":
+          description: Expediente actualizado
+    delete:
+      tags: [M00-Expedientes]
+      summary: Eliminar expediente
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "204":
+          description: Expediente eliminado
+
+  /expedientes/{id}/vincular:
+    post:
+      tags: [M00-Expedientes]
+      summary: Vincular expediente a propiedad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                propiedad_id:
+                  type: integer
+      responses:
+        "200":
+          description: Vinculación exitosa
+
+  # ===========================================================================
+  # M01 - FICHAS DE PROPIEDAD
+  # ===========================================================================
+  /fichas:
+    get:
+      tags: [M01-Fichas]
+      summary: Listar fichas de propiedad
+      responses:
+        "200":
+          description: Lista de fichas
+    post:
+      tags: [M01-Fichas]
+      summary: Crear ficha de propiedad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PropiedadCreate"
+      responses:
+        "201":
+          description: Ficha creada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Propiedad"
+
+  /fichas/{id}:
+    get:
+      tags: [M01-Fichas]
+      summary: Obtener ficha de propiedad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Detalle de la ficha
+
+  /fichas/{id}/avaluo:
+    post:
+      tags: [M01-Fichas]
+      summary: Solicitar avalúo para la propiedad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Avalúo generado
+
+  # ===========================================================================
+  # M02 - COPROPIEDADES
+  # ===========================================================================
+  /copropiedades:
+    get:
+      tags: [M02-Copropiedades]
+      summary: Listar copropiedades
+      responses:
+        "200":
+          description: Lista de copropiedades
+    post:
+      tags: [M02-Copropiedades]
+      summary: Crear copropiedad
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CopropiedadCreate"
+      responses:
+        "201":
+          description: Copropiedad creada
+
+  /copropiedades/{id}:
+    get:
+      tags: [M02-Copropiedades]
+      summary: Obtener copropiedad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Detalle de copropiedad
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Copropiedad"
+
+  /copropiedades/{id}/dashboard:
+    get:
+      tags: [M02-Copropiedades]
+      summary: Dashboard de copropiedad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Datos del dashboard
+
+  /copropiedades/{id}/unidades:
+    get:
+      tags: [M02-Copropiedades]
+      summary: Listar unidades de copropiedad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Lista de unidades
+    post:
+      tags: [M02-Copropiedades]
+      summary: Crear unidad
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "201":
+          description: Unidad creada
+
+  /copropiedades/{id}/antenas:
+    get:
+      tags: [M02-Copropiedades]
+      summary: Listar contratos de antenas
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Lista de contratos
+    post:
+      tags: [M02-Copropiedades]
+      summary: Crear contrato de antena
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "201":
+          description: Contrato creado
+
+  # ===========================================================================
+  # M03 - CREDIT SCORING BASEL IV
+  # ===========================================================================
+  /credit-scoring/calculate:
+    post:
+      tags: [M03-CreditScoring]
+      summary: Calcular credit score Basel IV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditScoreRequest"
+      responses:
+        "200":
+          description: Score calculado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditScoreResult"
+
+  /credit-scoring/pd/{entityId}:
+    get:
+      tags: [M03-CreditScoring]
+      summary: Obtener Probability of Default
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: PD calculada
+
+  /credit-scoring/lgd/{entityId}:
+    get:
+      tags: [M03-CreditScoring]
+      summary: Obtener Loss Given Default
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: LGD calculada
+
+  /credit-scoring/rwa/{entityId}:
+    get:
+      tags: [M03-CreditScoring]
+      summary: Obtener Risk Weighted Assets
+      parameters:
+        - name: entityId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: RWA calculados
+
+  # ===========================================================================
+  # M04 - VALORIZACIÓN
+  # ===========================================================================
+  /valorizaciones/avaluo:
+    post:
+      tags: [M04-Valorizacion]
+      summary: Generar avalúo ML
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AvaluoRequest"
+      responses:
+        "200":
+          description: Avalúo generado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AvaluoResult"
+
+  /valorizaciones/comparables:
+    post:
+      tags: [M04-Valorizacion]
+      summary: Buscar propiedades comparables
+      responses:
+        "200":
+          description: Comparables encontrados
+
+  /valorizaciones/historial/{propiedadId}:
+    get:
+      tags: [M04-Valorizacion]
+      summary: Historial de valores
+      parameters:
+        - name: propiedadId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Historial de valorización
+
+  # ===========================================================================
+  # M05 - ARRIENDOS
+  # ===========================================================================
+  /arriendos:
+    get:
+      tags: [M05-Arriendos]
+      summary: Listar contratos de arriendo
+      responses:
+        "200":
+          description: Lista de arriendos
+    post:
+      tags: [M05-Arriendos]
+      summary: Crear contrato de arriendo
+      responses:
+        "201":
+          description: Contrato creado
+
+  /arriendos/{id}/pagos:
+    get:
+      tags: [M05-Arriendos]
+      summary: Historial de pagos
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Historial de pagos
+
+  # ===========================================================================
+  # M06 - MANTENCIONES
+  # ===========================================================================
+  /mantenciones:
+    get:
+      tags: [M06-Mantenciones]
+      summary: Listar mantenciones
+      responses:
+        "200":
+          description: Lista de mantenciones
+    post:
+      tags: [M06-Mantenciones]
+      summary: Crear solicitud de mantención
+      responses:
+        "201":
+          description: Mantención creada
+
+  # ===========================================================================
+  # M07 - INVERSIONES
+  # ===========================================================================
+  /inversiones/analisis:
+    post:
+      tags: [M07-Inversiones]
+      summary: Análisis de inversión inmobiliaria
+      responses:
+        "200":
+          description: Análisis generado
+
+  /inversiones/simulacion:
+    post:
+      tags: [M07-Inversiones]
+      summary: Simulación de escenarios
+      responses:
+        "200":
+          description: Simulación completada
+
+  # ===========================================================================
+  # M08 - CONTABILIDAD
+  # ===========================================================================
+  /contabilidad/plan-cuentas:
+    get:
+      tags: [M08-Contabilidad]
+      summary: Obtener plan de cuentas
+      responses:
+        "200":
+          description: Plan de cuentas IFRS
+
+  /contabilidad/asientos:
+    get:
+      tags: [M08-Contabilidad]
+      summary: Listar asientos contables
+      responses:
+        "200":
+          description: Lista de asientos
+    post:
+      tags: [M08-Contabilidad]
+      summary: Crear asiento contable
+      responses:
+        "201":
+          description: Asiento creado
+
+  /contabilidad/balance:
+    get:
+      tags: [M08-Contabilidad]
+      summary: Generar balance
+      responses:
+        "200":
+          description: Balance generado
+
+  # ===========================================================================
+  # M01-OF - OPEN FINANCE NCG514
+  # ===========================================================================
+  /open-finance/consent:
+    post:
+      tags: [M01-OF-OpenFinance]
+      summary: Crear consentimiento FAPI 2.0
+      description: Inicia flujo de consentimiento según NCG514
+      security:
+        - oauth2: [openid, accounts]
+        - mtls: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConsentRequest"
+      responses:
+        "201":
+          description: Consentimiento creado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConsentResponse"
+
+  /open-finance/consent/{consentId}:
+    get:
+      tags: [M01-OF-OpenFinance]
+      summary: Obtener estado de consentimiento
+      security:
+        - oauth2: [openid]
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Estado del consentimiento
+    delete:
+      tags: [M01-OF-OpenFinance]
+      summary: Revocar consentimiento
+      security:
+        - oauth2: [openid]
+      parameters:
+        - name: consentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Consentimiento revocado
+
+  /open-finance/accounts:
+    get:
+      tags: [M01-OF-OpenFinance]
+      summary: Listar cuentas (con consentimiento)
+      security:
+        - oauth2: [accounts]
+      responses:
+        "200":
+          description: Lista de cuentas
+
+  /open-finance/accounts/{accountId}/balances:
+    get:
+      tags: [M01-OF-OpenFinance]
+      summary: Obtener saldos de cuenta
+      security:
+        - oauth2: [balances]
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Saldos de la cuenta
+
+  /open-finance/accounts/{accountId}/transactions:
+    get:
+      tags: [M01-OF-OpenFinance]
+      summary: Obtener transacciones
+      security:
+        - oauth2: [transactions]
+      parameters:
+        - name: accountId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Transacciones de la cuenta
+
+  /open-finance/payments:
+    post:
+      tags: [M01-OF-OpenFinance]
+      summary: Iniciar pago (PIS)
+      security:
+        - oauth2: [payments]
+        - mtls: []
+      responses:
+        "201":
+          description: Pago iniciado
+
+  /open-finance/directorio:
+    get:
+      tags: [M01-OF-OpenFinance]
+      summary: Directorio de participantes
+      security: []
+      responses:
+        "200":
+          description: Lista de instituciones participantes
+
+  # ===========================================================================
+  # M11 - PAE (PRECESSION ANALYSIS ENGINE)
+  # ===========================================================================
+  /copropiedades/{id}/pae/analyze:
+    post:
+      tags: [M11-PAE]
+      summary: Ejecutar análisis PAE completo
+      parameters:
+        - $ref: "#/components/parameters/id"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                include_projections:
+                  type: boolean
+                  default: true
+                horizon_months:
+                  type: integer
+                  default: 12
+      responses:
+        "200":
+          description: Análisis PAE completado
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaeAnalysis"
+
+  /copropiedades/{id}/pae/quick:
+    get:
+      tags: [M11-PAE]
+      summary: Análisis PAE rápido
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Score rápido
+
+  /copropiedades/{id}/pae/alerts:
+    get:
+      tags: [M11-PAE]
+      summary: Alertas PAE activas
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Lista de alertas
+
+  /copropiedades/{id}/pae/simulate:
+    post:
+      tags: [M11-PAE]
+      summary: Simular escenario what-if
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Resultado de simulación
+
+  # ===========================================================================
+  # M17 - GIRES (RIESGOS NATURALES)
+  # ===========================================================================
+  /gires/riesgos/{ubicacionId}:
+    get:
+      tags: [M17-GIRES]
+      summary: Obtener riesgos naturales por ubicación
+      parameters:
+        - name: ubicacionId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Análisis de riesgos
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GiresRiskAnalysis"
+
+  /gires/alertas:
+    get:
+      tags: [M17-GIRES]
+      summary: Alertas activas GIRES
+      responses:
+        "200":
+          description: Alertas activas
+
+  /gires/analisis:
+    post:
+      tags: [M17-GIRES]
+      summary: Ejecutar análisis de riesgos
+      responses:
+        "200":
+          description: Análisis completado
+
+  /gires/mapas/{tipo}:
+    get:
+      tags: [M17-GIRES]
+      summary: Obtener mapa de riesgos
+      parameters:
+        - name: tipo
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [sismico, tsunami, inundacion, incendio, remocion]
+      responses:
+        "200":
+          description: Datos del mapa
+
+  # ===========================================================================
+  # M22 - ÁGORA GEOVIEWER
+  # ===========================================================================
+  /agora/capas:
+    get:
+      tags: [M22-AGORA]
+      summary: Listar capas disponibles
+      responses:
+        "200":
+          description: Lista de capas
+
+  /agora/tiles/{z}/{x}/{y}:
+    get:
+      tags: [M22-AGORA]
+      summary: Obtener tile de mapa
+      parameters:
+        - name: z
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: x
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: y
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tile PNG/MVT
+
+  /agora/query:
+    post:
+      tags: [M22-AGORA]
+      summary: Query espacial
+      responses:
+        "200":
+          description: Features encontradas
+
+  /agora/prc/{comuna}:
+    get:
+      tags: [M22-AGORA]
+      summary: Obtener Plan Regulador Comunal
+      parameters:
+        - name: comuna
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Datos del PRC
+
+  /agora/zonificacion:
+    post:
+      tags: [M22-AGORA]
+      summary: Consultar zonificación por coordenadas
+      responses:
+        "200":
+          description: Zonificación encontrada
+
+  # ===========================================================================
+  # GT-PV - PLUSVALÍAS URBANAS
+  # ===========================================================================
+  /plusvalias/calcular:
+    post:
+      tags: [GT-PV-Plusvalias]
+      summary: Calcular plusvalía urbana (Ley 21.713)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlusvaliaRequest"
+      responses:
+        "200":
+          description: Plusvalía calculada
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlusvaliaResult"
+
+  /plusvalias/{id}:
+    get:
+      tags: [GT-PV-Plusvalias]
+      summary: Obtener detalle de plusvalía
+      parameters:
+        - $ref: "#/components/parameters/id"
+      responses:
+        "200":
+          description: Detalle de plusvalía
+
+  /plusvalias/simular:
+    post:
+      tags: [GT-PV-Plusvalias]
+      summary: Simular escenario de plusvalía
+      responses:
+        "200":
+          description: Simulación completada
+
+  /plusvalias/declaracion:
+    post:
+      tags: [GT-PV-Plusvalias]
+      summary: Generar declaración de plusvalía
+      responses:
+        "201":
+          description: Declaración generada
+
+  /plusvalias/obras-publicas:
+    get:
+      tags: [GT-PV-Plusvalias]
+      summary: Listar obras públicas que generan plusvalía
+      responses:
+        "200":
+          description: Lista de obras
+
+  # ===========================================================================
+  # IE - INDICADORES ECONÓMICOS
+  # ===========================================================================
+  /indicadores/uf:
+    get:
+      tags: [IE-Indicadores]
+      summary: Obtener valor UF
+      parameters:
+        - name: fecha
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Valor UF
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IndicadorEconomico"
+
+  /indicadores/utm:
+    get:
+      tags: [IE-Indicadores]
+      summary: Obtener valor UTM
+      responses:
+        "200":
+          description: Valor UTM
+
+  /indicadores/ipc:
+    get:
+      tags: [IE-Indicadores]
+      summary: Obtener IPC
+      responses:
+        "200":
+          description: Valor IPC
+
+  /indicadores/dolar:
+    get:
+      tags: [IE-Indicadores]
+      summary: Obtener tipo de cambio USD/CLP
+      responses:
+        "200":
+          description: Tipo de cambio
+
+  /indicadores/historico:
+    get:
+      tags: [IE-Indicadores]
+      summary: Obtener serie histórica de indicadores
+      parameters:
+        - name: indicador
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [uf, utm, ipc, dolar]
+        - name: desde
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: hasta
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Serie histórica
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Token vía Laravel Sanctum
+    
+    oauth2:
+      type: oauth2
+      description: OAuth2 FAPI 2.0 para Open Finance NCG514
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.datapolis.cl/authorize
+          tokenUrl: https://auth.datapolis.cl/token
+          scopes:
+            openid: OpenID Connect
+            accounts: Acceso a cuentas
+            balances: Acceso a saldos
+            transactions: Acceso a transacciones
+            payments: Iniciación de pagos
+    
+    mtls:
+      type: mutualTLS
+      description: mTLS requerido para endpoints Open Finance sensibles
+
+  parameters:
+    id:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: integer
+    page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+    per_page:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        default: 15
+        maximum: 100
+
+  responses:
+    Unauthorized:
+      description: No autorizado
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                example: Unauthenticated
+    NotFound:
+      description: Recurso no encontrado
+    ValidationError:
+      description: Error de validación
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+              errors:
+                type: object
+
+  schemas:
+    # -------------------------------------------------------------------------
+    # Common
+    # -------------------------------------------------------------------------
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: healthy
+        version:
+          type: string
+          example: "3.0.0"
+        timestamp:
+          type: string
+          format: date-time
+
+    PaginationMeta:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+
+    # -------------------------------------------------------------------------
+    # Auth
+    # -------------------------------------------------------------------------
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          example: Bearer
+        expires_in:
+          type: integer
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        tenant_id:
+          type: integer
+        roles:
+          type: array
+          items:
+            type: string
+
+    # -------------------------------------------------------------------------
+    # M00 - Expediente
+    # -------------------------------------------------------------------------
+    Expediente:
+      type: object
+      properties:
+        id:
+          type: integer
+        titulo:
+          type: string
+        tipo:
+          type: string
+          enum: [compraventa, arriendo, tasacion, due_diligence]
+        descripcion:
+          type: string
+        estado:
+          type: string
+          enum: [activo, cerrado, pendiente]
+        fecha_inicio:
+          type: string
+          format: date-time
+        propiedad_id:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    ExpedienteCreate:
+      type: object
+      required: [titulo, tipo]
+      properties:
+        titulo:
+          type: string
+        tipo:
+          type: string
+        descripcion:
+          type: string
+        fecha_inicio:
+          type: string
+          format: date-time
+
+    ExpedienteUpdate:
+      type: object
+      properties:
+        titulo:
+          type: string
+        descripcion:
+          type: string
+        estado:
+          type: string
+
+    ExpedienteList:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Expediente"
+        meta:
+          $ref: "#/components/schemas/PaginationMeta"
+
+    # -------------------------------------------------------------------------
+    # M01 - Propiedad
+    # -------------------------------------------------------------------------
+    Propiedad:
+      type: object
+      properties:
+        id:
+          type: integer
+        rol:
+          type: string
+        direccion:
+          type: string
+        comuna:
+          type: string
+        region:
+          type: string
+        tipo:
+          type: string
+          enum: [departamento, casa, local, bodega, terreno]
+        superficie_total:
+          type: number
+        superficie_util:
+          type: number
+        ano_construccion:
+          type: integer
+        coordenadas:
+          type: object
+          properties:
+            lat:
+              type: number
+            lng:
+              type: number
+
+    PropiedadCreate:
+      type: object
+      required: [rol, direccion, comuna]
+      properties:
+        rol:
+          type: string
+        direccion:
+          type: string
+        comuna:
+          type: string
+        region:
+          type: string
+        tipo:
+          type: string
+        superficie_total:
+          type: number
+        superficie_util:
+          type: number
+
+    # -------------------------------------------------------------------------
+    # M02 - Copropiedad
+    # -------------------------------------------------------------------------
+    Copropiedad:
+      type: object
+      properties:
+        id:
+          type: integer
+        nombre:
+          type: string
+        rut:
+          type: string
+        direccion:
+          type: string
+        comuna:
+          type: string
+        total_unidades:
+          type: integer
+        prorrateo_type:
+          type: string
+          enum: [metros, alicuota, igual]
+
+    CopropiedadCreate:
+      type: object
+      required: [nombre, rut, direccion]
+      properties:
+        nombre:
+          type: string
+        rut:
+          type: string
+        direccion:
+          type: string
+        comuna:
+          type: string
+        total_unidades:
+          type: integer
+        prorrateo_type:
+          type: string
+
+    # -------------------------------------------------------------------------
+    # M03 - Credit Scoring
+    # -------------------------------------------------------------------------
+    CreditScoreRequest:
+      type: object
+      required: [entity_type, entity_id]
+      properties:
+        entity_type:
+          type: string
+          enum: [copropiedad, unidad, copropietario]
+        entity_id:
+          type: integer
+        include_history:
+          type: boolean
+          default: false
+
+    CreditScoreResult:
+      type: object
+      properties:
+        score:
+          type: integer
+          minimum: 300
+          maximum: 850
+        grade:
+          type: string
+          enum: [AAA, AA, A, BBB, BB, B, CCC, CC, C, D]
+        pd:
+          type: number
+          description: Probability of Default
+        lgd:
+          type: number
+          description: Loss Given Default
+        ead:
+          type: number
+          description: Exposure at Default
+        rwa:
+          type: number
+          description: Risk Weighted Assets
+
+    # -------------------------------------------------------------------------
+    # M04 - Valorización
+    # -------------------------------------------------------------------------
+    AvaluoRequest:
+      type: object
+      required: [propiedad_id]
+      properties:
+        propiedad_id:
+          type: integer
+        metodo:
+          type: string
+          enum: [ml_ensemble, hedonic, comparables, cost]
+          default: ml_ensemble
+
+    AvaluoResult:
+      type: object
+      properties:
+        valor_uf:
+          type: number
+        valor_clp:
+          type: number
+        confidence:
+          type: number
+        metodo_usado:
+          type: string
+        fecha_avaluo:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # M01-OF - Open Finance
+    # -------------------------------------------------------------------------
+    ConsentRequest:
+      type: object
+      required: [permissions, expirationDateTime]
+      properties:
+        permissions:
+          type: array
+          items:
+            type: string
+            enum: [ACCOUNTS_READ, BALANCES_READ, TRANSACTIONS_READ, PAYMENTS_INITIATE]
+        expirationDateTime:
+          type: string
+          format: date-time
+
+    ConsentResponse:
+      type: object
+      properties:
+        consentId:
+          type: string
+        status:
+          type: string
+          enum: [AWAITING_AUTHORISATION, AUTHORISED, REJECTED, REVOKED]
+        creationDateTime:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # M11 - PAE
+    # -------------------------------------------------------------------------
+    PaeAnalysis:
+      type: object
+      properties:
+        id:
+          type: integer
+        copropiedad_id:
+          type: integer
+        score_total:
+          type: number
+          minimum: 0
+          maximum: 100
+        scores:
+          type: object
+          properties:
+            financial:
+              type: number
+            compliance:
+              type: number
+            operational:
+              type: number
+            risk:
+              type: number
+            governance:
+              type: number
+        alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              severity:
+                type: string
+                enum: [critical, high, medium, low]
+              message:
+                type: string
+        created_at:
+          type: string
+          format: date-time
+
+    # -------------------------------------------------------------------------
+    # M17 - GIRES
+    # -------------------------------------------------------------------------
+    GiresRiskAnalysis:
+      type: object
+      properties:
+        ubicacion_id:
+          type: string
+        riesgos:
+          type: array
+          items:
+            type: object
+            properties:
+              tipo:
+                type: string
+                enum: [sismico, tsunami, inundacion, remocion, incendio]
+              nivel:
+                type: string
+                enum: [muy_alto, alto, medio, bajo, muy_bajo]
+              score:
+                type: number
+        score_global:
+          type: number
+
+    # -------------------------------------------------------------------------
+    # GT-PV - Plusvalías
+    # -------------------------------------------------------------------------
+    PlusvaliaRequest:
+      type: object
+      required: [propiedad_id]
+      properties:
+        propiedad_id:
+          type: integer
+        fecha_calculo:
+          type: string
+          format: date
+        incluir_obras_publicas:
+          type: boolean
+          default: true
+
+    PlusvaliaResult:
+      type: object
+      properties:
+        propiedad_id:
+          type: integer
+        valor_inicial_uf:
+          type: number
+        valor_final_uf:
+          type: number
+        plusvalia_bruta_uf:
+          type: number
+        tasa_aplicable:
+          type: number
+        impuesto_uf:
+          type: number
+        obras_contribuyentes:
+          type: array
+          items:
+            type: string
+        fecha_calculo:
+          type: string
+          format: date
+
+    # -------------------------------------------------------------------------
+    # IE - Indicadores
+    # -------------------------------------------------------------------------
+    IndicadorEconomico:
+      type: object
+      properties:
+        codigo:
+          type: string
+          enum: [uf, utm, ipc, dolar]
+        valor:
+          type: number
+        fecha:
+          type: string
+          format: date
+        fuente:
+          type: string
